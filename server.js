@@ -7,7 +7,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 1. TikTok දත්ත ලබා ගන්න API එක
+// 1. TikTok දත්ත සහ විවිධ කොලිටි ලින්ක් ලබා ගැනීම
 app.post('/api/download/tiktok', async (req, res) => {
     const { url } = req.body;
     if (!url) {
@@ -18,7 +18,7 @@ app.post('/api/download/tiktok', async (req, res) => {
         const options = {
             method: 'GET',
             url: 'https://tikwm.com/api/',
-            params: { url: url }
+            params: { url: url, hd: 1 } // HD දත්තත් සමඟ ඉල්ලීම
         };
 
         const response = await axios.request(options);
@@ -30,7 +30,8 @@ app.post('/api/download/tiktok', async (req, res) => {
                 data: {
                     title: data.data.title,
                     cover: data.data.cover,
-                    videoNoWatermark: data.data.play
+                    videoNormal: data.data.play,      // සාමාන්‍ය කොලිටි ලින්ක් එක (SD)
+                    videoHD: data.data.hdplay || data.data.play // HD කොලිටි ලින්ක් එක (නැත්නම් සාමාන්‍ය එකම)
                 }
             });
         } else {
@@ -41,9 +42,11 @@ app.post('/api/download/tiktok', async (req, res) => {
     }
 });
 
-// 2. වීඩියෝව කෙලින්ම ඩවුන්ලෝඩ් කරවන Proxy API එක (ටැබ් එකේ ප්ලේ වීම වැළැක්වීමට)
+// 2. කොලිටිය අනුව Fast Direct Download කරවන Proxy API එක
 app.get('/api/proxy-download', async (req, res) => {
     const videoUrl = req.query.url;
+    const quality = req.query.q || 'hd';
+    
     if (!videoUrl) {
         return res.status(400).send('Video URL is missing');
     }
@@ -55,7 +58,7 @@ app.get('/api/proxy-download', async (req, res) => {
             responseType: 'stream'
         });
 
-        res.setHeader('Content-Disposition', 'attachment; filename="tiktok-video.mp4"');
+        res.setHeader('Content-Disposition', `attachment; filename="tiktok-${quality}-video.mp4"`);
         res.setHeader('Content-Type', 'video/mp4');
         response.data.pipe(res);
     } catch (error) {
